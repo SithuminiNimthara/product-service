@@ -7,6 +7,7 @@ import com.ctse.productservice.repo.ProductRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -18,7 +19,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Product create(ProductCreateRequest req, String imageUrl) {
+    public Product create(ProductCreateRequest req) {
         if (repo.existsBySku(req.getSku())) {
             throw new IllegalArgumentException("SKU already exists: " + req.getSku());
         }
@@ -30,7 +31,7 @@ public class ProductServiceImpl implements ProductService {
         p.setStock(req.getStock());
         p.setCategory(req.getCategory());
         p.setDescription(req.getDescription());
-        p.setImageUrl(imageUrl);
+        p.setImageUrl(null); // image will be uploaded separately
 
         return repo.save(p);
     }
@@ -47,7 +48,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Product update(Long id, ProductUpdateRequest req, String imageUrl) {
+    public Product update(Long id, ProductUpdateRequest req) {
         Product product = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
 
@@ -56,10 +57,6 @@ public class ProductServiceImpl implements ProductService {
         product.setStock(req.getStock());
         product.setCategory(req.getCategory());
         product.setDescription(req.getDescription());
-
-        if (imageUrl != null && !imageUrl.isBlank()) {
-            product.setImageUrl(imageUrl);
-        }
 
         return repo.save(product);
     }
@@ -71,5 +68,42 @@ public class ProductServiceImpl implements ProductService {
         }
 
         repo.deleteById(id);
+    }
+
+    @Override
+    public Map<String, Object> checkStock(Long productId, Integer quantity) {
+        Product product = repo.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+
+        boolean available = product.getStock() >= quantity;
+
+        return Map.of(
+                "productId", product.getId(),
+                "productName", product.getName(),
+                "requestedQuantity", quantity,
+                "availableStock", product.getStock(),
+                "available", available
+        );
+    }
+
+    @Override
+    public Map<String, Object> reduceStock(Long productId, Integer quantity) {
+        Product product = repo.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+
+        if (product.getStock() < quantity) {
+            throw new IllegalArgumentException("Insufficient stock for product ID: " + productId);
+        }
+
+        product.setStock(product.getStock() - quantity);
+        repo.save(product);
+
+        return Map.of(
+                "message", "Stock reduced successfully",
+                "productId", product.getId(),
+                "productName", product.getName(),
+                "reducedBy", quantity,
+                "remainingStock", product.getStock()
+        );
     }
 }

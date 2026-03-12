@@ -1,28 +1,26 @@
 package com.ctse.productservice.controller;
 
+import com.ctse.productservice.dto.CheckStockRequest;
 import com.ctse.productservice.dto.ProductCreateRequest;
 import com.ctse.productservice.dto.ProductUpdateRequest;
+import com.ctse.productservice.dto.ReduceStockRequest;
 import com.ctse.productservice.entity.Product;
-import com.ctse.productservice.service.FileStorageService;
 import com.ctse.productservice.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/products")
 public class ProductController {
 
     private final ProductService service;
-    private final FileStorageService fileStorageService;
 
-    public ProductController(ProductService service, FileStorageService fileStorageService) {
+    public ProductController(ProductService service) {
         this.service = service;
-        this.fileStorageService = fileStorageService;
     }
 
     @GetMapping("/health")
@@ -30,13 +28,9 @@ public class ProductController {
         return Map.of("service", "product-service", "status", "running");
     }
 
-    @PostMapping(consumes = {"multipart/form-data"})
-    public ResponseEntity<Product> create(
-            @Valid @ModelAttribute ProductCreateRequest req,
-            @RequestParam(value = "file", required = false) MultipartFile file
-    ) throws Exception {
-        String imageUrl = fileStorageService.saveFile(file);
-        return ResponseEntity.ok(service.create(req, imageUrl));
+    @PostMapping
+    public ResponseEntity<Product> create(@Valid @RequestBody ProductCreateRequest req) {
+        return ResponseEntity.ok(service.create(req));
     }
 
     @GetMapping
@@ -49,19 +43,24 @@ public class ProductController {
         return service.get(id);
     }
 
-    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
-    public Product update(
-            @PathVariable Long id,
-            @Valid @ModelAttribute ProductUpdateRequest req,
-            @RequestParam(value = "file", required = false) MultipartFile file
-    ) throws Exception {
-        String imageUrl = fileStorageService.saveFile(file);
-        return service.update(id, req, imageUrl);
+    @PutMapping("/{id}")
+    public Product update(@PathVariable Long id, @Valid @RequestBody ProductUpdateRequest req) {
+        return service.update(id, req);
     }
 
     @DeleteMapping("/{id}")
     public Map<String, String> delete(@PathVariable Long id) {
         service.delete(id);
         return Map.of("message", "Product deleted successfully");
+    }
+
+    @PostMapping("/check-stock")
+    public ResponseEntity<Map<String, Object>> checkStock(@Valid @RequestBody CheckStockRequest request) {
+        return ResponseEntity.ok(service.checkStock(request.getProductId(), request.getQuantity()));
+    }
+
+    @PostMapping("/reduce-stock")
+    public ResponseEntity<Map<String, Object>> reduceStock(@Valid @RequestBody ReduceStockRequest request) {
+        return ResponseEntity.ok(service.reduceStock(request.getProductId(), request.getQuantity()));
     }
 }

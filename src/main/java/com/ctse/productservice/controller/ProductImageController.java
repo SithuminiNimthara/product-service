@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/products")
 public class ProductImageController {
 
     private final ProductRepository repo;
@@ -32,8 +32,10 @@ public class ProductImageController {
     }
 
     @PostMapping("/{id}/image")
-    public ResponseEntity<?> uploadImage(@PathVariable Long id,
-                                         @RequestParam("file") MultipartFile file) throws Exception {
+    public ResponseEntity<?> uploadImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) throws Exception {
 
         Product product = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
@@ -46,7 +48,9 @@ public class ProductImageController {
         String filename = UUID.randomUUID() + (ext != null ? "." + ext : "");
 
         File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs();
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
 
         Path path = Paths.get(uploadDir).resolve(filename);
         Files.write(path, file.getBytes());
@@ -55,6 +59,10 @@ public class ProductImageController {
         product.setImageUrl(imageUrl);
         repo.save(product);
 
-        return ResponseEntity.ok(Map.of("message", "Image uploaded", "imageUrl", imageUrl));
+        return ResponseEntity.ok(Map.of(
+                "message", "Image uploaded successfully",
+                "productId", product.getId(),
+                "imageUrl", imageUrl
+        ));
     }
 }
